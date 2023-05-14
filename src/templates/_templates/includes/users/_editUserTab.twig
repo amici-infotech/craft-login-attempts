@@ -1,0 +1,5 @@
+<div id="user-login-activity" class="hidden">
+    {% if user %}
+        {% include 'login-attempts/_templates/includes/users/_activityTable' with { user: user } %}
+    {% endif %}
+</div>

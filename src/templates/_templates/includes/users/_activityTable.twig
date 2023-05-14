@@ -1,0 +1,42 @@
+{% do view.registerAssetBundle('craft\\web\\assets\\admintable\\AdminTableAsset') -%}
+{% do view.registerTranslations('login-attempts', [
+  'IP Address',
+  'Error',
+  'Login Date',
+  'Login Status',
+]) %}
+
+<h2>{{ 'Login Activity'|t('login-attempts') }}</h2>
+<div id="login-attempts-vue-admin-table"></div>
+
+{% set tableData = [] %}
+{% set query = craft.loginAttempts.activity().userId(user.getId()).limit(100).all() %}
+{% for item in query %}
+    {% set tableData = tableData|merge([{
+      ipAddress: item.ipAddress,
+      error: item.error,
+      dateCreated: item.dateCreated|datetime('jS F Y h:i A'),
+      loginStatus: "<span class='" ~ (item.loginStatus == "success" ? "success" : "error") ~ "'>#{item.loginStatus|title}</span>"|raw,
+    }]) %}
+{% endfor %}
+
+{% js %}
+var tableColumns = [
+  { name: 'ipAddress', title: Craft.t('login-attempts', 'IP Address') },
+  { name: 'error', title: Craft.t('login-attempts', 'Error') },
+  { name: 'dateCreated', title: Craft.t('login-attempts', 'Login Date') },
+  { name: 'loginStatus', title: Craft.t('login-attempts', 'Login Status') }
+];
+
+{% if tableData is defined %}
+    if (document.querySelector('#login-attempts-vue-admin-table')) {
+      new Craft.VueAdminTable({
+        columns: tableColumns,
+        container: '#login-attempts-vue-admin-table',
+        emptyMessage: Craft.t('login-attempts', 'No inactive carts exist for this user.'),
+        padded: true,
+        tableData: {{ tableData|json_encode|raw }}
+      });
+    }
+  {% endif %}
+{% endjs %}
