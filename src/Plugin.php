@@ -159,7 +159,7 @@ class Plugin extends CraftPlugin
 
     public function getSettingsResponse(): mixed
     {
-        Craft::$app->getResponse()->redirect(UrlHelper::cpUrl('login-attempts/settings'));
+        return Craft::$app->getResponse()->redirect(UrlHelper::cpUrl('login-attempts/settings'));
     }
 
     public function getCpNavItem(): ?array
