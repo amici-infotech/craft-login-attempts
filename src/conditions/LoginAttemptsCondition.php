@@ -14,7 +14,7 @@ class LoginAttemptsCondition extends ElementCondition
     /**
      * @inheritdoc
      */
-    protected function conditionRuleTypes(): array
+    protected function selectableConditionRules(): array
     {
         $types = array_merge(parent::conditionRuleTypes(), [
             LoginStatusConditionRule::class,

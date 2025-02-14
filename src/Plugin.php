@@ -30,6 +30,7 @@ use craft\events\RegisterUrlRulesEvent;
 use craft\helpers\UrlHelper;
 use craft\web\UrlManager;
 use craft\web\twig\variables\CraftVariable;
+use yii\web\Request;
 
 /**
  * Craft plugins are very much like little applications in and of themselves. We’ve made
@@ -222,33 +223,35 @@ class Plugin extends CraftPlugin
     {
         Event::on(UsersController::class, UsersController::EVENT_LOGIN_FAILURE, function (LoginFailureEvent $event) {
             $log = new LoginAttemptsElement();
+            $request = Craft::$app->getRequest();
 
             $log->userId = $event->user ? $event->user->id : null;
-            $log->title = Craft::$app->getRequest()->getBodyParam('loginName');
+            $log->title = $request->getBodyParam('loginName');
             $log->loginName = $log->title;
             $log->loginStatus = "failed";
             $log->error = $event->message;
 
-            if (Craft::$app->getConfig()->getGeneral()->storeUserIps) {
-                $log->ipAddress = Craft::$app->getRequest()->getUserIP();
-            }
+            $log->ipAddress = $request instanceof Request ? $request->getUserIP() : '';
 
             Craft::$app->getElements()->saveElement($log);
         });
 
         Event::on(User::class, User::EVENT_AFTER_LOGIN, function (UserEvent $event) {
+            $request = Craft::$app->getRequest();
             $log = new LoginAttemptsElement();
             $user = Craft::$app->getUser()->getIdentity();
 
             $log->userId = $user->id;
-            $log->title = Craft::$app->getRequest()->getBodyParam('loginName');
+            $log->title = $request->getBodyParam('loginName');
             $log->loginName = $log->title;
             $log->loginStatus = "success";
             $log->error = "";
 
-            if (Craft::$app->getConfig()->getGeneral()->storeUserIps) {
-                $log->ipAddress = Craft::$app->getRequest()->getUserIP();
-            }
+            /* if (Craft::$app->getConfig()->getGeneral()->storeUserIps) {
+                $log->ipAddress = $request->getUserIP();
+            } */
+
+            $log->ipAddress = $request instanceof Request ? $request->getUserIP() : '';
 
             Craft::$app->getElements()->saveElement($log);
         });

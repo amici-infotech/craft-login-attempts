@@ -324,20 +324,20 @@ class LoginAttempts extends Element
         return null;
     }
 
-    protected function tableAttributeHtml(string $attribute): string
+    protected function attributeHtml(string $attribute): string
     {
         switch ($attribute) {
 
             case 'userId':
                 $userId = $this->getUser();
-                return $userId ? Cp::elementHtml($userId) : '';
+                return $userId ? Cp::elementChipHtml($userId) : '';
 
             case 'loginStatus':
                 return "<span class='" . ($this->loginStatus == "success" ? "success" : "error") . "'>" . ucfirst($this->loginStatus) . "</span>";
 
         }
 
-        return parent::tableAttributeHtml($attribute);
+        return parent::attributeHtml($attribute);
     }
 
     public function getIsDeletable(): bool
