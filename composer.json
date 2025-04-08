@@ -1,7 +1,7 @@
 {
     "name": "amici/craft-login-attempts",
     "description": "Log all login attempts",
-    "version": "5.0.1",
+    "version": "5.0.2",
     "type": "craft-plugin",
     "keywords": ["craft", "cms", "craftcms", "craft-plugin", "login", "failed login", "login attempts"],
     "license": "proprietary",
