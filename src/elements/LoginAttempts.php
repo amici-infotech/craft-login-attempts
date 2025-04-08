@@ -13,6 +13,7 @@ use craft\elements\User;
 use craft\helpers\Cp;
 use craft\helpers\Html;
 use craft\helpers\UrlHelper;
+use Exception;
 
 use amici\LoginAttempts\conditions\LoginAttemptsCondition;
 use amici\LoginAttempts\elements\db\LoginAttemptsLogsQuery;
@@ -306,7 +307,7 @@ class LoginAttempts extends Element
     }
 
     /**
-     * Returns the element’s edit URL in the control panel.
+     * Returns the element's edit URL in the control panel.
      *
      * @return string|null
      * @since 3.7.0

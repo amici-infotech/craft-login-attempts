@@ -16,7 +16,7 @@ class LoginAttemptsCondition extends ElementCondition
      */
     protected function selectableConditionRules(): array
     {
-        $types = array_merge(parent::conditionRuleTypes(), [
+        $types = array_merge(parent::selectableConditionRules(), [
             LoginStatusConditionRule::class,
             IpAddressConditionRule::class,
             UserConditionRule::class,
