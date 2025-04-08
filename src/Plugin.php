@@ -74,7 +74,7 @@ class Plugin extends CraftPlugin
      *
      * @var string
      */
-    public string $schemaVersion = '1.0.0';
+    public string $schemaVersion = '5.0.2';
 
     /**
      * Set to `true` if the plugin should have a settings view in the control panel.
