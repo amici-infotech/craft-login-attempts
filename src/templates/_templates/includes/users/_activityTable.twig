@@ -14,7 +14,7 @@
 {% set query = craft.loginAttempts.activity().userId(user.getId()).limit(100).all() %}
 {% for item in query %}
     {% set tableData = tableData|merge([{
-      loginType: item.loginTypeLabel,
+      loginType: item.loginTypeHtml|raw,
       ipAddress: item.ipAddress,
       error: item.error,
       dateCreated: item.dateCreated|datetime('jS F Y h:i A'),

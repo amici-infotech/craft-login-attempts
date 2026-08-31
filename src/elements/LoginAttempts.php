@@ -350,7 +350,7 @@ class LoginAttempts extends Element
                 return "<span class='" . ($this->loginStatus == "success" ? "success" : "error") . "'>" . ucfirst($this->loginStatus) . "</span>";
 
             case 'loginType':
-                return Html::encode($this->getLoginTypeLabel());
+                return $this->getLoginTypeHtml();
 
         }
 
@@ -365,6 +365,28 @@ class LoginAttempts extends Element
             self::TYPE_LOGIN => Craft::t('login-attempts', 'Login'),
             default => Craft::t('login-attempts', 'Login'),
         };
+    }
+
+    public function getLoginTypeHtml(): string
+    {
+        $label = Html::encode($this->getLoginTypeLabel());
+        $type = $this->loginType ?: self::TYPE_LOGIN;
+
+        $styles = match ($type) {
+            self::TYPE_FORGOT_PASSWORD => 'background-color: #fef3c7; color: #92400e; border: 1px solid #fde68a;',
+            self::TYPE_RESET_PASSWORD => 'background-color: #ede9fe; color: #5b21b6; border: 1px solid #ddd6fe;',
+            self::TYPE_LOGIN => 'background-color: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd;',
+            default => 'background-color: #f3f4f6; color: #374151; border: 1px solid #e5e7eb;',
+        };
+
+        $class = match ($type) {
+            self::TYPE_FORGOT_PASSWORD => 'badge badge-forgot-password',
+            self::TYPE_RESET_PASSWORD => 'badge badge-reset-password',
+            self::TYPE_LOGIN => 'badge badge-login',
+            default => 'badge',
+        };
+
+        return "<span class='{$class}' style='display:inline-flex;align-items:center;padding:2px 8px;font-size:12px;font-weight:600;border-radius:12px;line-height:1.4;white-space:nowrap;{$styles}'>{$label}</span>";
     }
 
     public function getIsDeletable(): bool
