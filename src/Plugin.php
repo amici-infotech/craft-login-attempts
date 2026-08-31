@@ -11,7 +11,10 @@
 namespace amici\LoginAttempts;
 
 use Craft;
+use yii\base\ActionEvent;
+use yii\base\Controller;
 use yii\base\Event;
+use yii\web\Response;
 use yii\web\User;
 use yii\web\UserEvent;
 
@@ -25,6 +28,7 @@ use craft\base\Model;
 use craft\base\Plugin as CraftPlugin;
 use craft\controllers\UsersController;
 use craft\console\Application as ConsoleApplication;
+use craft\elements\User as UserElement;
 use craft\events\LoginFailureEvent;
 use craft\events\RegisterUrlRulesEvent;
 use craft\helpers\UrlHelper;
@@ -74,7 +78,7 @@ class Plugin extends CraftPlugin
      *
      * @var string
      */
-    public string $schemaVersion = '5.0.2';
+    public string $schemaVersion = '5.0.3';
 
     /**
      * Set to `true` if the plugin should have a settings view in the control panel.
@@ -222,39 +226,191 @@ class Plugin extends CraftPlugin
     private function _registerEvents(): void
     {
         Event::on(UsersController::class, UsersController::EVENT_LOGIN_FAILURE, function (LoginFailureEvent $event) {
-            $log = new LoginAttemptsElement();
             $request = Craft::$app->getRequest();
+            $loginName = $request->getBodyParam('loginName');
 
-            $log->userId = $event->user ? $event->user->id : null;
-            $log->title = $request->getBodyParam('loginName');
-            $log->loginName = $log->title;
-            $log->loginStatus = "failed";
-            $log->error = $event->message;
-
-            $log->ipAddress = $request instanceof Request ? $request->getUserIP() : '';
-
-            Craft::$app->getElements()->saveElement($log);
+            $this->_saveLog([
+                'userId' => $event->user ? $event->user->id : null,
+                'loginName' => $loginName,
+                'loginType' => LoginAttemptsElement::TYPE_LOGIN,
+                'loginStatus' => 'failed',
+                'error' => $event->message,
+                'ipAddress' => $request instanceof Request ? $request->getUserIP() : '',
+            ]);
         });
 
         Event::on(User::class, User::EVENT_AFTER_LOGIN, function (UserEvent $event) {
             $request = Craft::$app->getRequest();
-            $log = new LoginAttemptsElement();
             $user = Craft::$app->getUser()->getIdentity();
+            $loginName = $request->getBodyParam('loginName');
 
-            $log->userId = $user->id;
-            $log->title = $request->getBodyParam('loginName');
-            $log->loginName = $log->title;
-            $log->loginStatus = "success";
-            $log->error = "";
-
-            /* if (Craft::$app->getConfig()->getGeneral()->storeUserIps) {
-                $log->ipAddress = $request->getUserIP();
-            } */
-
-            $log->ipAddress = $request instanceof Request ? $request->getUserIP() : '';
-
-            Craft::$app->getElements()->saveElement($log);
+            $this->_saveLog([
+                'userId' => $user->id,
+                'loginName' => $loginName,
+                'loginType' => LoginAttemptsElement::TYPE_LOGIN,
+                'loginStatus' => 'success',
+                'error' => '',
+                'ipAddress' => $request instanceof Request ? $request->getUserIP() : '',
+            ]);
         });
+
+        // Forgot password + reset password (set-password) actions
+        Event::on(UsersController::class, Controller::EVENT_AFTER_ACTION, function (ActionEvent $event) {
+            $request = Craft::$app->getRequest();
+
+            if (!$request->getIsPost()) {
+                return;
+            }
+
+            $actionId = $event->action->id;
+
+            if ($actionId === 'send-password-reset-email') {
+                $this->_logForgotPassword($event, $request);
+                return;
+            }
+
+            if ($actionId === 'set-password') {
+                $this->_logResetPassword($event, $request);
+            }
+        });
+    }
+
+    private function _logForgotPassword(ActionEvent $event, Request $request): void
+    {
+        $loginName = $request->getBodyParam('loginName');
+        $userId = $request->getBodyParam('userId');
+        $user = null;
+
+        if ($userId) {
+            $user = Craft::$app->getUsers()->getUserById((int) $userId);
+            $loginName = $loginName ?: ($user?->email ?? $user?->username);
+        } elseif ($loginName) {
+            $user = Craft::$app->getUsers()->getUserByUsernameOrEmail($loginName);
+        }
+
+        // Craft may hide failures when preventUserEnumeration is on, so base status on whether a valid user was targeted.
+        if ($user) {
+            [$loginStatus, $error] = $this->_resolveActionOutcome($event);
+            // If Craft returned a generic success while mail failed, still keep failed from outcome.
+            if ($loginStatus !== 'failed') {
+                $loginStatus = 'success';
+                $error = '';
+            }
+        } else {
+            $loginStatus = 'failed';
+            $error = Craft::t('app', 'Invalid username or email.');
+        }
+
+        $this->_saveLog([
+            'userId' => $user?->id,
+            'loginName' => $loginName,
+            'loginType' => LoginAttemptsElement::TYPE_FORGOT_PASSWORD,
+            'loginStatus' => $loginStatus,
+            'error' => $error,
+            'ipAddress' => $request->getUserIP() ?: '',
+        ]);
+    }
+
+    private function _logResetPassword(ActionEvent $event, Request $request): void
+    {
+        $uid = $request->getBodyParam('id') ?: $request->getParam('id');
+        $user = null;
+
+        if ($uid) {
+            $user = UserElement::find()
+                ->uid($uid)
+                ->status(null)
+                ->one();
+        }
+
+        [$loginStatus, $error] = $this->_resolveActionOutcome(
+            $event,
+            Craft::t('app', 'Couldn’t update password.')
+        );
+
+        $this->_saveLog([
+            'userId' => $user?->id,
+            'loginName' => $user?->email ?? $user?->username,
+            'loginType' => LoginAttemptsElement::TYPE_RESET_PASSWORD,
+            'loginStatus' => $loginStatus,
+            'error' => $error,
+            'ipAddress' => $request->getUserIP() ?: '',
+        ]);
+    }
+
+    /**
+     * Best-effort success/failure detection from a controller action result.
+     *
+     * @return array{0: string, 1: string} [loginStatus, error]
+     */
+    private function _resolveActionOutcome(ActionEvent $event, string $defaultError = ''): array
+    {
+        $result = $event->result;
+
+        if ($result instanceof Response) {
+            if ($result->getIsClientError() || $result->getIsServerError()) {
+                $message = '';
+                if (is_array($result->data) && !empty($result->data['message'])) {
+                    $message = (string) $result->data['message'];
+                }
+
+                return ['failed', $message ?: $defaultError];
+            }
+
+            if ($result->getIsRedirection()) {
+                return ['success', ''];
+            }
+
+            if (is_array($result->data)) {
+                if (isset($result->data['errors']) || isset($result->data['error'])) {
+                    $message = $result->data['message'] ?? $defaultError;
+                    return ['failed', is_string($message) ? $message : $defaultError];
+                }
+
+                // JSON success payloads from Craft typically include a message / status
+                if (array_key_exists('message', $result->data) || array_key_exists('status', $result->data)) {
+                    return ['success', ''];
+                }
+            }
+        }
+
+        $errorFlash = Craft::$app->getSession()->getFlash('error', null, false);
+        if ($errorFlash) {
+            return ['failed', is_array($errorFlash) ? implode(', ', $errorFlash) : (string) $errorFlash];
+        }
+
+        $noticeFlash = Craft::$app->getSession()->getFlash('notice', null, false);
+        if ($noticeFlash) {
+            return ['success', ''];
+        }
+
+        // HTML set-password failure re-renders the form (200) without a clear signal;
+        // treat non-redirect HTML responses without a success flash as failed when default error is set.
+        if ($result instanceof Response && !$result->getIsRedirection() && $defaultError !== '') {
+            // Only mark failed when route params carry errors (Craft asFailure for HTML)
+            $routeParams = Craft::$app->getUrlManager()->getRouteParams();
+            if (!empty($routeParams['errors'])) {
+                $errors = $routeParams['errors'];
+                $message = is_array($errors) ? implode(', ', $errors) : (string) $errors;
+                return ['failed', $message ?: $defaultError];
+            }
+        }
+
+        return ['success', ''];
+    }
+
+    private function _saveLog(array $attributes): void
+    {
+        $log = new LoginAttemptsElement();
+        $log->userId = $attributes['userId'] ?? null;
+        $log->loginName = $attributes['loginName'] ?? null;
+        $log->title = $log->loginName;
+        $log->loginType = $attributes['loginType'] ?? LoginAttemptsElement::TYPE_LOGIN;
+        $log->loginStatus = $attributes['loginStatus'] ?? 'failed';
+        $log->error = $attributes['error'] ?? '';
+        $log->ipAddress = $attributes['ipAddress'] ?? '';
+
+        Craft::$app->getElements()->saveElement($log);
     }
 
     private function _registerTemplateHooks(): void

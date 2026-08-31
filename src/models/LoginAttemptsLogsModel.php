@@ -31,6 +31,11 @@ class LoginAttemptsLogsModel extends Model
     public ?string $loginName = null;
 
     /**
+     * @var string|null The login type (login, forgot_password, reset_password)
+     */
+    public ?string $loginType = null;
+
+    /**
      * @var string|null The loginStatus
      */
     public ?string $loginStatus = null;

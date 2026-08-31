@@ -1,5 +1,9 @@
 # Login Attempts Changelog
 
+## 5.0.3 - 2026-08-25
+- Added `loginType` column to distinguish login, forgot password, and reset password actions.
+- Logs forgot password (`send-password-reset-email`) and reset password (`set-password`) attempts.
+
 ## 5.0.2 - 2025-04-08
 - Trying to solve the issue for Craft 5, where TITLE field is empty.
 

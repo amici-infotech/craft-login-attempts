@@ -24,9 +24,14 @@ class LoginAttempts extends Element
     const STATUS_LIVE = 'live';
     const STATUS_DISABLED = 'disabled';
 
+    public const TYPE_LOGIN = 'login';
+    public const TYPE_FORGOT_PASSWORD = 'forgot_password';
+    public const TYPE_RESET_PASSWORD = 'reset_password';
+
     // public $id;
     public $userId;
     public $loginName;
+    public $loginType = self::TYPE_LOGIN;
     public $loginStatus;
     public $ipAddress;
     public $error;
@@ -173,6 +178,11 @@ class LoginAttempts extends Element
                 'attribute' => 'loginStatus',
             ],
             [
+                'label' => Craft::t('login-attempts', 'Login Type'),
+                'orderBy' => 'login_attempts.loginType',
+                'attribute' => 'loginType',
+            ],
+            [
                 'label' => Craft::t('login-attempts', 'IP Address'),
                 'orderBy' => 'login_attempts.ipAddress',
                 'attribute' => 'ipAddress',
@@ -253,6 +263,7 @@ class LoginAttempts extends Element
         $attributes = [
             'loginName'   => ['label' => Craft::t('login-attempts', 'Login Name')],
             'id'          => ['label' => Craft::t('login-attempts', 'ID')],
+            'loginType'   => ['label' => Craft::t('login-attempts', 'Login Type')],
             'loginStatus' => ['label' => Craft::t('login-attempts', 'Login Status')],
             'ipAddress'   => ['label' => Craft::t('login-attempts', 'IP Address')],
             'error'       => ['label' => Craft::t('login-attempts', 'Error')],
@@ -274,6 +285,7 @@ class LoginAttempts extends Element
             'error',
             'dateCreated',
             'loginStatus',
+            'loginType',
             'userId',
         ];
 
@@ -286,6 +298,7 @@ class LoginAttempts extends Element
             'loginName',
             'id',
             'loginStatus',
+            'loginType',
             'ipAddress',
             'error',
             'userId',
@@ -336,9 +349,22 @@ class LoginAttempts extends Element
             case 'loginStatus':
                 return "<span class='" . ($this->loginStatus == "success" ? "success" : "error") . "'>" . ucfirst($this->loginStatus) . "</span>";
 
+            case 'loginType':
+                return Html::encode($this->getLoginTypeLabel());
+
         }
 
         return parent::attributeHtml($attribute);
+    }
+
+    public function getLoginTypeLabel(): string
+    {
+        return match ($this->loginType) {
+            self::TYPE_FORGOT_PASSWORD => Craft::t('login-attempts', 'Forgot Password'),
+            self::TYPE_RESET_PASSWORD => Craft::t('login-attempts', 'Reset Password'),
+            self::TYPE_LOGIN => Craft::t('login-attempts', 'Login'),
+            default => Craft::t('login-attempts', 'Login'),
+        };
     }
 
     public function getIsDeletable(): bool
@@ -370,6 +396,7 @@ class LoginAttempts extends Element
 
         $record->userId = $this->userId;
         $record->loginName = $this->loginName;
+        $record->loginType = $this->loginType ?: self::TYPE_LOGIN;
         $record->loginStatus = $this->loginStatus;
         $record->ipAddress = $this->ipAddress;
         $record->error = $this->error;

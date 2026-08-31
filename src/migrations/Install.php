@@ -21,6 +21,7 @@ class Install extends Migration
             'id'          => $this->primaryKey(),
             'userId'      => $this->integer(),
             'loginName'   => $this->string(),
+            'loginType'   => $this->string()->defaultValue('login'),
             'loginStatus' => $this->string(),
             'ipAddress'   => $this->string(),
             'error'       => $this->text(),

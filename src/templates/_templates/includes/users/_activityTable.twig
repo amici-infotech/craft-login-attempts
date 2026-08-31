@@ -4,6 +4,7 @@
   'Error',
   'Login Date',
   'Login Status',
+  'Login Type',
 ]) %}
 
 <h2>{{ 'Login Activity'|t('login-attempts') }}</h2>
@@ -13,6 +14,7 @@
 {% set query = craft.loginAttempts.activity().userId(user.getId()).limit(100).all() %}
 {% for item in query %}
     {% set tableData = tableData|merge([{
+      loginType: item.loginTypeLabel,
       ipAddress: item.ipAddress,
       error: item.error,
       dateCreated: item.dateCreated|datetime('jS F Y h:i A'),
@@ -22,6 +24,7 @@
 
 {% js %}
 var tableColumns = [
+  { name: 'loginType', title: Craft.t('login-attempts', 'Login Type') },
   { name: 'ipAddress', title: Craft.t('login-attempts', 'IP Address') },
   { name: 'error', title: Craft.t('login-attempts', 'Error') },
   { name: 'dateCreated', title: Craft.t('login-attempts', 'Login Date') },

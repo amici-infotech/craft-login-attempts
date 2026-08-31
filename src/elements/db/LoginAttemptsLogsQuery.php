@@ -13,6 +13,7 @@ class LoginAttemptsLogsQuery extends ElementQuery
     // public $id;
     public $userId;
     public $loginName;
+    public $loginType;
     public $loginStatus;
     public $ipAddress;
     public $error;
@@ -48,6 +49,12 @@ class LoginAttemptsLogsQuery extends ElementQuery
         return $this;
     }
 
+    public function loginType($value)
+    {
+        $this->loginType = $value;
+        return $this;
+    }
+
     public function ipAddress($value)
     {
         $this->ipAddress = $value;
@@ -79,6 +86,7 @@ class LoginAttemptsLogsQuery extends ElementQuery
         $this->query->select([
             'login_attempts.userId',
             'login_attempts.loginName',
+            'login_attempts.loginType',
             'login_attempts.loginStatus',
             'login_attempts.ipAddress',
             'login_attempts.error',
@@ -92,6 +100,11 @@ class LoginAttemptsLogsQuery extends ElementQuery
         if ($this->loginName)
         {
             $this->subQuery->andWhere(Db::parseParam('login_attempts.loginName', $this->loginName));
+        }
+
+        if ($this->loginType)
+        {
+            $this->subQuery->andWhere(Db::parseParam('login_attempts.loginType', $this->loginType));
         }
 
         if ($this->loginStatus)
